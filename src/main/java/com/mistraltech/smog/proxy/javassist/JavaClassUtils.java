@@ -3,8 +3,8 @@ package com.mistraltech.smog.proxy.javassist;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
-class JavaClassUtils {
-    static <TM> TM createInstance(Constructor<TM> constructor) {
+final class JavaClassUtils {
+    public static <TM> TM createInstance(Constructor<TM> constructor) {
         try {
             return constructor.newInstance();
         } catch (InstantiationException e) {
@@ -16,7 +16,7 @@ class JavaClassUtils {
         }
     }
 
-    static <TM> Constructor<TM> getConstructor(Class<TM> matcherClass) {
+    public static <TM> Constructor<TM> getConstructor(Class<TM> matcherClass) {
         try {
             return matcherClass.getDeclaredConstructor();
         } catch (NoSuchMethodException e) {

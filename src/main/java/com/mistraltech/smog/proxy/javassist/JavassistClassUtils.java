@@ -2,54 +2,89 @@ package com.mistraltech.smog.proxy.javassist;
 
 import javassist.*;
 
-class JavassistClassUtils {
-    static void addConstructor(CtClass matcherCtClass, String constructorBody) {
+final class JavassistClassUtils {
+    public static void addConstructor(CtClass ctClass, String constructorBody) {
         try {
-            final CtConstructor ctConstructor = CtNewConstructor.make(null, null, constructorBody, matcherCtClass);
-            matcherCtClass.addConstructor(ctConstructor);
+            final CtConstructor ctConstructor = CtNewConstructor.make(null, null, constructorBody, ctClass);
+            ctClass.addConstructor(ctConstructor);
+        } catch (CannotCompileException e) {
+            throw new RuntimeException("Failed to compile class constructor", e);
+        }
+    }
+
+    public static void addMethod(CtClass ctClass, int modifiers, String methodName, CtClass[] parameters, String body, CtClass returnType) {
+        try {
+            final CtMethod method = CtNewMethod.make(modifiers, returnType, methodName, parameters, null, body, ctClass);
+            ctClass.addMethod(method);
         } catch (CannotCompileException e) {
             throw new RuntimeException("Failed to compile matcher class", e);
         }
     }
 
-    static void addMethod(CtClass matcherCtClass, int modifiers, String methodName, CtClass[] parameters, String body, CtClass returnType) {
+    public static CtClass getCtClass(String className) {
         try {
-            final CtMethod method = CtNewMethod.make(modifiers, returnType, methodName, parameters, null, body, matcherCtClass);
-            matcherCtClass.addMethod(method);
-        } catch (CannotCompileException e) {
-            throw new RuntimeException("Failed to compile matcher class", e);
-        }
-    }
-
-    static CtClass getCtClass(String matcherInterfaceName) {
-        try {
-            return ClassPool.getDefault().get(matcherInterfaceName);
+            return ClassPool.getDefault().get(className);
         } catch (NotFoundException e) {
             throw new RuntimeException("Failed to find class", e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    static <TM> Class<TM> getClassFrom(CtClass matcherCtClass) {
+    public static <TM> Class<TM> getClassFrom(CtClass matcherCtClass) {
         try {
             return matcherCtClass.toClass();
         } catch (CannotCompileException e) {
-            throw new RuntimeException("Failed to compile matcher class", e);
+            throw new RuntimeException("Failed to compile class", e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    static <T> T getMatchesAnnotation(CtClass matcherCtInterface, Class<T> annotationClass) {
+    public static <T> T getAnnotation(CtClass ctClass, Class<T> annotationClass) {
         try {
-            return (T) matcherCtInterface.getAnnotation(annotationClass);
+            return (T) ctClass.getAnnotation(annotationClass);
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("Failed to find annotation class", e);
         }
     }
 
-    public static void addMethod(CtClass matcherCtClass, int modifiers, CtMethod ctMethod, String body) {
+    public static boolean hasField(CtClass ctClass, String fieldName) {
         try {
-            addMethod(matcherCtClass, modifiers, ctMethod.getName(), ctMethod.getParameterTypes(), body, ctMethod.getReturnType());
+            ctClass.getField(fieldName);
+            return true;
+        } catch (NotFoundException e) {
+            return false;
+        }
+    }
+
+    public static void addField(CtClass ctClass, CtClass type, String fieldName, String initializer) {
+        try {
+            final CtField field = new CtField(type, fieldName, ctClass);
+            field.setModifiers(Modifier.FINAL & Modifier.PRIVATE);
+            ctClass.addField(field, initializer);
+        } catch (CannotCompileException e) {
+            throw new RuntimeException("Failed to compile field", e);
+        }
+    }
+
+    public static void addMethod(CtClass ctClass, int modifiers, CtMethod ctMethod, String body) {
+        try {
+            addMethod(ctClass, modifiers, ctMethod.getName(), ctMethod.getParameterTypes(), body, ctMethod.getReturnType());
+        } catch (NotFoundException e) {
+            throw new RuntimeException("Failed to find class", e);
+        }
+    }
+
+    public static CtClass[] getParameterTypes(CtMethod ctMethod) {
+        try {
+            return ctMethod.getParameterTypes();
+        } catch (NotFoundException e) {
+            throw new RuntimeException("Could not get parameter types for method " + ctMethod.getName(), e);
+        }
+    }
+
+    public static boolean isSubTypeOf(CtClass ctClass, CtClass superTypeCtClass) {
+        try {
+            return ctClass.subtypeOf(superTypeCtClass);
         } catch (NotFoundException e) {
             throw new RuntimeException("Failed to find class", e);
         }

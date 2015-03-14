@@ -3,9 +3,9 @@ package com.mistraltech.smog.proxy.javassist;
 import com.mistraltech.smog.core.annotation.Matches;
 import javassist.CtClass;
 
-class MatchesAnnotationUtils {
-    static Matches getVerifiedMatchesAnnotation(CtClass matcherCtInterface) {
-        final Matches matchesAnnotation = JavassistClassUtils.getMatchesAnnotation(matcherCtInterface, Matches.class);
+final class MatchesAnnotationUtils {
+    public static Matches getVerifiedMatchesAnnotation(CtClass matcherCtInterface) {
+        final Matches matchesAnnotation = JavassistClassUtils.getAnnotation(matcherCtInterface, Matches.class);
 
         if (matchesAnnotation == null) {
             throw new IllegalArgumentException("Matcher interface is missing a @Matches annotation: " + matcherCtInterface.getName());
@@ -18,7 +18,7 @@ class MatchesAnnotationUtils {
         return matchesAnnotation;
     }
 
-    static String getMatchedClassDescription(Matches matchesAnnotation) {
+    public static String getMatchedClassDescription(Matches matchesAnnotation) {
         String description = matchesAnnotation.description();
 
         if (description == null) {

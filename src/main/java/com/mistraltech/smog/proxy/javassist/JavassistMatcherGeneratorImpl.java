@@ -2,41 +2,45 @@ package com.mistraltech.smog.proxy.javassist;
 
 import com.mistraltech.smog.core.CompositePropertyMatcher;
 import com.mistraltech.smog.core.MatchAccumulator;
+import com.mistraltech.smog.core.PropertyMatcher;
+import com.mistraltech.smog.core.ReflectingPropertyMatcher;
 import com.mistraltech.smog.core.annotation.Matches;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtMethod;
 import javassist.Modifier;
+import org.hamcrest.Matcher;
 
 import java.lang.reflect.Constructor;
+
+import static com.mistraltech.smog.proxy.javassist.NameUtils.deCapitalise;
+import static com.mistraltech.smog.proxy.javassist.NameUtils.removePrefix;
 
 public class JavassistMatcherGeneratorImpl {
 
     public static <TM> TM matcherOf(Class<TM> matcherInterface) {
-        final String matcherInterfaceName = matcherInterface.getName();
+        Class<TM> matcherClass = getMatcherClass(matcherInterface);
+        return createInstance(matcherClass);
+    }
 
-        final String matcherClassName = matcherInterfaceName + "SmogMatcher";
-        CtClass matcherCtClass = findCtClass(matcherClassName);
+    @SuppressWarnings("unchecked")
+    private static <TM> Class<TM> getMatcherClass(Class<TM> matcherInterface) {
+        final String matcherClassName = matcherInterface.getName() + "SmogMatcher";
 
-        if (matcherCtClass == null) {
-            matcherCtClass = generateMatcherClass(matcherInterfaceName, matcherClassName);
+        try {
+            return (Class<TM>) Class.forName(matcherClassName);
+        } catch (ClassNotFoundException e) {
+            return generateMatcherClass(matcherInterface, matcherClassName);
         }
-
-        return createInstance(matcherCtClass);
     }
 
-    private static CtClass findCtClass(String matcherClassName) {
-        return ClassPool.getDefault().getOrNull(matcherClassName);
-    }
-
-    private static <TM> TM createInstance(CtClass matcherCtClass) {
-        final Class<TM> matcherClass = JavassistClassUtils.getClassFrom(matcherCtClass);
+    private static <TM> TM createInstance(Class<TM> matcherClass) {
         final Constructor<TM> constructor = JavaClassUtils.getConstructor(matcherClass);
         return JavaClassUtils.createInstance(constructor);
     }
 
-    private static CtClass generateMatcherClass(String matcherInterfaceName, String matcherClassName) {
-        final CtClass matcherCtInterface = JavassistClassUtils.getCtClass(matcherInterfaceName);
+    private static <TM> Class<TM> generateMatcherClass(Class<TM> matcherInterface, String matcherClassName) {
+        final CtClass matcherCtInterface = JavassistClassUtils.getCtClass(matcherInterface.getName());
 
         final Matches matchesAnnotation = MatchesAnnotationUtils.getVerifiedMatchesAnnotation(matcherCtInterface);
 
@@ -56,12 +60,54 @@ public class JavassistMatcherGeneratorImpl {
 
         generateMatchesSafelyMethod(matchedCtClass, matchAccumulatorCtClass, matcherCtClass);
 
-        return matcherCtClass;
+        final Class<TM> matcherClass = JavassistClassUtils.getClassFrom(matcherCtClass);
+
+        matcherCtClass.detach();
+
+        return matcherClass;
     }
 
     private static void generateMatcherMethod(CtClass matcherCtClass, CtMethod ctMethod) {
-        String body = String.format("{ System.out.println(\"hello from %s\\n\"); return this; }", ctMethod.getName());
+        final String propertyName = toPropertyName(ctMethod.getName());
+        final String propertyMatcherName = propertyName + "Matcher";
+        final String propertyMatcherTypeName = PropertyMatcher.class.getTypeName();
+        final String reflectingPropertyMatcherTypeName = ReflectingPropertyMatcher.class.getTypeName();
+        final CtClass propertyMatcherCtClass = JavassistClassUtils.getCtClass(propertyMatcherTypeName);
+        final String initializer = String.format("new %s(\"%s\", this)", reflectingPropertyMatcherTypeName, propertyName);
+
+        if (!JavassistClassUtils.hasField(matcherCtClass, propertyMatcherName)) {
+            JavassistClassUtils.addField(matcherCtClass, propertyMatcherCtClass, propertyMatcherName, initializer);
+        }
+
+        final CtClass[] parameterTypes = JavassistClassUtils.getParameterTypes(ctMethod);
+
+        if (parameterTypes.length != 1) {
+            throw new RuntimeException("Could not generate matcher method for " + ctMethod.getName() +
+                    " - expected 1 parameter but got " + parameterTypes.length);
+        }
+
+        final CtClass hamcrestMatcherCtClass = JavassistClassUtils.getCtClass(Matcher.class.getTypeName());
+        final boolean parameterIsMatcher = JavassistClassUtils.isSubTypeOf(parameterTypes[0], hamcrestMatcherCtClass);
+
+        String body = generateMatcherMethodBody(propertyMatcherName, parameterIsMatcher);
+
         JavassistClassUtils.addMethod(matcherCtClass, Modifier.PUBLIC, ctMethod, body);
+    }
+
+    private static String generateMatcherMethodBody(String propertyMatcherName, boolean parameterIsMatcher) {
+        if (parameterIsMatcher) {
+            return String.format("{ this.%s.setMatcher($1); return this; }", propertyMatcherName);
+        } else {
+            return String.format("{ this.%s.setMatcher(org.hamcrest.CoreMatchers.equalTo(($w)$1)); return this; }", propertyMatcherName);
+        }
+    }
+
+    private static String toPropertyName(String name) {
+        if (!name.startsWith("has")) {
+            throw new IllegalArgumentException("Expected method name to start with 'has'");
+        }
+
+        return deCapitalise(removePrefix(name, "has"));
     }
 
     private static void generateConstructor(String matchedClassDescription, CtClass matcherCtClass) {
