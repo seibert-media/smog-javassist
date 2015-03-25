@@ -9,9 +9,12 @@ import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtMethod;
 import javassist.Modifier;
+import javassist.NotFoundException;
 import org.hamcrest.Matcher;
 
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.mistraltech.smog.proxy.javassist.NameUtils.deCapitalise;
 import static com.mistraltech.smog.proxy.javassist.NameUtils.removePrefix;
@@ -54,7 +57,7 @@ public class JavassistMatcherGeneratorImpl {
 
         generateConstructor(matchedClassDescription, matcherCtClass);
 
-        for (CtMethod ctMethod : matcherCtInterface.getDeclaredMethods()) {
+        for (CtMethod ctMethod : getMatcherMethods(matcherCtInterface)) {
             generateMatcherMethod(matcherCtClass, ctMethod);
         }
 
@@ -67,11 +70,41 @@ public class JavassistMatcherGeneratorImpl {
         return matcherClass;
     }
 
+    private static List<CtMethod> getMatcherMethods(CtClass matcherCtInterface) {
+        List<CtMethod> methods = new ArrayList<CtMethod>();
+        getMatcherMethods(matcherCtInterface, methods);
+        return methods;
+    }
+
+    private static void getMatcherMethods(CtClass matcherCtClass, List<CtMethod> methods) {
+        for (CtClass superType : JavassistClassUtils.getInterfaces(matcherCtClass)) {
+            getMatcherMethods(superType, methods);
+        }
+
+        if (! matcherCtClass.isInterface() && JavassistClassUtils.getSuperclass(matcherCtClass) != null) {
+            getMatcherMethods(JavassistClassUtils.getSuperclass(matcherCtClass), methods);
+        }
+
+        for (CtMethod method : matcherCtClass.getDeclaredMethods()) {
+            if (hasMatcherMethodSignature(method, matcherCtClass)) {
+                methods.add(method);
+            }
+        }
+    }
+
+    private static boolean hasMatcherMethodSignature(CtMethod ctMethod, CtClass matcherCtClass) {
+        final CtClass returnType = JavassistClassUtils.getReturnType(ctMethod);
+        final CtClass hamcrestMatcherCtClass = JavassistClassUtils.getCtClass(Matcher.class.getName());
+        final CtClass[] parameterTypes = JavassistClassUtils.getParameterTypes(ctMethod);
+        return parameterTypes.length == 1 &&
+                JavassistClassUtils.isTypeInBounds(returnType, matcherCtClass, hamcrestMatcherCtClass);
+    }
+
     private static void generateMatcherMethod(CtClass matcherCtClass, CtMethod ctMethod) {
         final String propertyName = toPropertyName(ctMethod.getName());
         final String propertyMatcherName = propertyName + "Matcher";
-        final String propertyMatcherTypeName = PropertyMatcher.class.getTypeName();
-        final String reflectingPropertyMatcherTypeName = ReflectingPropertyMatcher.class.getTypeName();
+        final String propertyMatcherTypeName = PropertyMatcher.class.getName();
+        final String reflectingPropertyMatcherTypeName = ReflectingPropertyMatcher.class.getName();
         final CtClass propertyMatcherCtClass = JavassistClassUtils.getCtClass(propertyMatcherTypeName);
         final String initializer = String.format("new %s(\"%s\", this)", reflectingPropertyMatcherTypeName, propertyName);
 
@@ -86,7 +119,7 @@ public class JavassistMatcherGeneratorImpl {
                     " - expected 1 parameter but got " + parameterTypes.length);
         }
 
-        final CtClass hamcrestMatcherCtClass = JavassistClassUtils.getCtClass(Matcher.class.getTypeName());
+        final CtClass hamcrestMatcherCtClass = JavassistClassUtils.getCtClass(Matcher.class.getName());
         final boolean parameterIsMatcher = JavassistClassUtils.isSubTypeOf(parameterTypes[0], hamcrestMatcherCtClass);
 
         String body = generateMatcherMethodBody(propertyMatcherName, parameterIsMatcher);
@@ -104,7 +137,7 @@ public class JavassistMatcherGeneratorImpl {
 
     private static String toPropertyName(String name) {
         if (!name.startsWith("has")) {
-            throw new IllegalArgumentException("Expected method name to start with 'has'");
+            throw new IllegalArgumentException("Matcher method name '" + name + "' was expected to start with 'has'");
         }
 
         return deCapitalise(removePrefix(name, "has"));

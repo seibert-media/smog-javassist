@@ -1,4 +1,4 @@
-package com.mistraltech.smog.examples.proxied.matcher;
+package com.mistraltech.smog.examples.simple.matcher;
 
 import com.mistraltech.smog.core.annotation.Matches;
 import com.mistraltech.smog.examples.model.Person;
@@ -8,12 +8,10 @@ import org.hamcrest.Matcher;
 import java.util.List;
 
 @Matches(value = Person.class, description = "a Person")
-public interface PersonMatcher extends Matcher<Person> {
+public interface PersonMatcher extends AddresseeMatcher<PersonMatcher, Person> {
     PersonMatcher hasAge(int age);
 
-    PersonMatcher hasAge(Matcher<? super Integer> age);
-
-    PersonMatcher hasPhoneList(List<Phone> phoneList);
+    PersonMatcher hasAge(Matcher<? super Integer> ageMatcher);
 
     PersonMatcher hasPhoneList(Matcher<? super List<? extends Phone>> phoneListMatcher);
 }

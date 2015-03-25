@@ -89,4 +89,44 @@ final class JavassistClassUtils {
             throw new RuntimeException("Failed to find class", e);
         }
     }
+
+    public static boolean isReturnableFrom(CtClass ctClass, CtMethod ctMethod) {
+        try {
+            return isSubTypeOf(ctClass, ctMethod.getReturnType());
+        } catch (NotFoundException e) {
+            throw new RuntimeException("Failed to find class", e);
+        }
+    }
+
+    public static CtClass getReturnType(CtMethod ctMethod) {
+        try {
+            return ctMethod.getReturnType();
+        } catch (NotFoundException e) {
+            throw new RuntimeException("Failed to find class", e);
+        }
+    }
+
+    public static boolean isTypeInBounds(CtClass boundedType, CtClass lowerBound, CtClass upperBound) {
+        try {
+            return lowerBound.subtypeOf(boundedType) && boundedType.subtypeOf(upperBound);
+        } catch (NotFoundException e) {
+            throw new RuntimeException("Failed to find class", e);
+        }
+    }
+
+    public static CtClass[] getInterfaces(CtClass matcherCtClass) {
+        try {
+            return matcherCtClass.getInterfaces();
+        } catch (NotFoundException e) {
+            throw new RuntimeException("Failed to find class", e);
+        }
+    }
+
+    public static CtClass getSuperclass(CtClass matcherCtClass) {
+        try {
+            return matcherCtClass.getSuperclass();
+        } catch (NotFoundException e) {
+            throw new RuntimeException("Failed to find class", e);
+        }
+    }
 }
