@@ -20,12 +20,9 @@ import static com.mistraltech.smog.examples.simple.matcher.MatcherFactory.anAddr
 import static com.mistraltech.smog.examples.simple.matcher.MatcherFactory.anAddresseeThat;
 import static com.mistraltech.smog.examples.utils.MatcherTestUtils.assertDescription;
 import static com.mistraltech.smog.examples.utils.MatcherTestUtils.assertMismatch;
-import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
-import static org.hamcrest.core.CombinableMatcher.both;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;

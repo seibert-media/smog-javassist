@@ -1,6 +1,15 @@
 package com.mistraltech.smog.proxy.javassist;
 
-import javassist.*;
+import javassist.CannotCompileException;
+import javassist.ClassPool;
+import javassist.CtClass;
+import javassist.CtConstructor;
+import javassist.CtField;
+import javassist.CtMethod;
+import javassist.CtNewConstructor;
+import javassist.CtNewMethod;
+import javassist.Modifier;
+import javassist.NotFoundException;
 
 final class JavassistClassUtils {
     public static void addConstructor(CtClass ctClass, String constructorBody) {

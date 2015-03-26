@@ -25,10 +25,8 @@ public class SimpleMatcherExamplesMockStubbingTest {
         Person person = new Person("Brian", 26, new Address(73, new PostCode("out", "in")));
 
         when(converter.personToName(argThat(is(aPersonThat()
-                        .hasName(startsWith("B")).hasAddress(anAddressThat()
-                                        .hasPostCode(aPostCodeThat().hasInner("in"))
-                        )
-        )))).thenReturn("Billie");
+                .hasName(startsWith("B")).hasAddress(anAddressThat()
+                        .hasPostCode(aPostCodeThat().hasInner("in"))))))).thenReturn("Billie");
 
         // The mock expectation should match and returns "Billie"
 

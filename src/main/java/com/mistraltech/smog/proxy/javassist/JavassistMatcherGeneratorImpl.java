@@ -80,7 +80,7 @@ public class JavassistMatcherGeneratorImpl {
             getMatcherMethods(superType, methods);
         }
 
-        if (! matcherCtClass.isInterface() && JavassistClassUtils.getSuperclass(matcherCtClass) != null) {
+        if (!matcherCtClass.isInterface() && JavassistClassUtils.getSuperclass(matcherCtClass) != null) {
             getMatcherMethods(JavassistClassUtils.getSuperclass(matcherCtClass), methods);
         }
 
