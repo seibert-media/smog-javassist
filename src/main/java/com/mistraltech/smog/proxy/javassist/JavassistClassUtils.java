@@ -17,7 +17,7 @@ final class JavassistClassUtils {
             final CtMethod method = CtNewMethod.make(modifiers, returnType, methodName, parameters, null, body, ctClass);
             ctClass.addMethod(method);
         } catch (CannotCompileException e) {
-            throw new RuntimeException("Failed to compile matcher class", e);
+            throw new RuntimeException("Failed to compile class", e);
         }
     }
 
@@ -90,14 +90,6 @@ final class JavassistClassUtils {
         }
     }
 
-    public static boolean isReturnableFrom(CtClass ctClass, CtMethod ctMethod) {
-        try {
-            return isSubTypeOf(ctClass, ctMethod.getReturnType());
-        } catch (NotFoundException e) {
-            throw new RuntimeException("Failed to find class", e);
-        }
-    }
-
     public static CtClass getReturnType(CtMethod ctMethod) {
         try {
             return ctMethod.getReturnType();
@@ -114,17 +106,17 @@ final class JavassistClassUtils {
         }
     }
 
-    public static CtClass[] getInterfaces(CtClass matcherCtClass) {
+    public static CtClass[] getInterfaces(CtClass ctClass) {
         try {
-            return matcherCtClass.getInterfaces();
+            return ctClass.getInterfaces();
         } catch (NotFoundException e) {
             throw new RuntimeException("Failed to find class", e);
         }
     }
 
-    public static CtClass getSuperclass(CtClass matcherCtClass) {
+    public static CtClass getSuperclass(CtClass ctClass) {
         try {
-            return matcherCtClass.getSuperclass();
+            return ctClass.getSuperclass();
         } catch (NotFoundException e) {
             throw new RuntimeException("Failed to find class", e);
         }

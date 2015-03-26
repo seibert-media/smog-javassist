@@ -9,7 +9,6 @@ import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtMethod;
 import javassist.Modifier;
-import javassist.NotFoundException;
 import org.hamcrest.Matcher;
 
 import java.lang.reflect.Constructor;
@@ -38,7 +37,7 @@ public class JavassistMatcherGeneratorImpl {
     }
 
     private static <TM> TM createInstance(Class<TM> matcherClass) {
-        final Constructor<TM> constructor = JavaClassUtils.getConstructor(matcherClass);
+        final Constructor<TM> constructor = JavaClassUtils.getDefaultConstructor(matcherClass);
         return JavaClassUtils.createInstance(constructor);
     }
 
