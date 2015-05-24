@@ -12,7 +12,17 @@ public class MatcherFactory {
     }
 
     @SuppressWarnings("unchecked")
+    public static AddresseeMatcher<?, Addressee> anAddresseeLike(Addressee addressee) {
+        return matcherOf(AddresseeMatcher.class).like(addressee);
+    }
+
+    @SuppressWarnings("unchecked")
     public static PersonMatcher<?, Person> aPersonThat() {
         return matcherOf(PersonMatcher.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static PersonMatcher<?, Person> aPersonLike(Person person) {
+        return matcherOf(PersonMatcher.class).like(person);
     }
 }

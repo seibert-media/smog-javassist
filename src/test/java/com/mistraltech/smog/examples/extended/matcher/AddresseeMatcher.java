@@ -14,4 +14,6 @@ public interface AddresseeMatcher<R extends AddresseeMatcher<R, T>, T extends Ad
     R hasAddress(Address address);
 
     R hasAddress(Matcher<? super Address> addressMatcher);
+
+    R like(Addressee addressee);
 }

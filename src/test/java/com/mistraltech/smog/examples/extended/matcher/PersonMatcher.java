@@ -9,6 +9,8 @@ import java.util.List;
 
 @Matches(value = Person.class, description = "a Person")
 public interface PersonMatcher<R extends PersonMatcher<R, T>, T extends Person> extends AddresseeMatcher<R, T> {
+    R like(Person p);
+
     R hasAge(int age);
 
     R hasAge(Matcher<? super Integer> ageMatcher);

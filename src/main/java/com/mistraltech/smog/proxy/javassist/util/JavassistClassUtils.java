@@ -1,4 +1,4 @@
-package com.mistraltech.smog.proxy.javassist;
+package com.mistraltech.smog.proxy.javassist.util;
 
 import javassist.CannotCompileException;
 import javassist.ClassPool;
@@ -11,7 +11,19 @@ import javassist.CtNewMethod;
 import javassist.Modifier;
 import javassist.NotFoundException;
 
-final class JavassistClassUtils {
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * Utility methods that wrap Javassist methods and remove the need to handle checked exceptions.
+ * All exceptions are converted to runtime exceptions.
+ */
+public final class JavassistClassUtils {
+
+    private JavassistClassUtils() {
+    }
+
     public static void addConstructor(CtClass ctClass, String constructorBody) {
         try {
             final CtConstructor ctConstructor = CtNewConstructor.make(null, null, constructorBody, ctClass);
@@ -44,15 +56,6 @@ final class JavassistClassUtils {
             return matcherCtClass.toClass();
         } catch (CannotCompileException e) {
             throw new RuntimeException("Failed to compile class", e);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T> T getAnnotation(CtClass ctClass, Class<T> annotationClass) {
-        try {
-            return (T) ctClass.getAnnotation(annotationClass);
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Failed to find annotation class", e);
         }
     }
 
@@ -129,5 +132,45 @@ final class JavassistClassUtils {
         } catch (NotFoundException e) {
             throw new RuntimeException("Failed to find class", e);
         }
+    }
+
+    public static Class<?> getLoadedClass(CtClass ctClass) {
+        try {
+            return Class.forName(ctClass.getName());
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Failed to get class for " + ctClass.getName(), e);
+        }
+    }
+
+    /**
+     * An alternative to {@link CtClass#getMethods()} that returns the methods in partially-defined order:
+     * <ol>
+     * <li>Methods on interfaces (most distant ancestors first)</li>
+     * <li>Methods on superclasses (most distant ancestors first)</li>
+     * <li>Methods on the class itself.</li>
+     * </ol>
+     *
+     * @param ctClass the class containing the required methods
+     * @return a list of methods on the class and its super-types.
+     */
+    public static List<CtMethod> getMethods(CtClass ctClass) {
+        List<CtMethod> methods = new ArrayList<CtMethod>();
+        getMethods(ctClass, methods);
+        return methods;
+    }
+
+    private static void getMethods(CtClass ctClass, List<CtMethod> methods) {
+        for (CtClass superType : getInterfaces(ctClass)) {
+            getMethods(superType, methods);
+        }
+
+        if (!ctClass.isInterface()) {
+            final CtClass superclass = getSuperclass(ctClass);
+            if (superclass != null) {
+                getMethods(getSuperclass(ctClass), methods);
+            }
+        }
+
+        Collections.addAll(methods, ctClass.getDeclaredMethods());
     }
 }

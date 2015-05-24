@@ -1,8 +1,14 @@
-package com.mistraltech.smog.proxy.javassist;
+package com.mistraltech.smog.proxy.javassist.util;
 
 import static java.lang.Character.toLowerCase;
 
-final class NameUtils {
+/**
+ * Utility methods for manipulating names.
+ */
+public final class NameUtils {
+
+    private NameUtils() {
+    }
 
     /**
      * Convert the first character of the name to lowercase.
