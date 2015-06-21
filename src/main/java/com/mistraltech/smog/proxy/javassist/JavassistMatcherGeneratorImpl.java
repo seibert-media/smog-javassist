@@ -1,7 +1,6 @@
 package com.mistraltech.smog.proxy.javassist;
 
 import com.mistraltech.smog.core.CompositePropertyMatcher;
-import com.mistraltech.smog.core.MatchAccumulator;
 import com.mistraltech.smog.core.PropertyMatcher;
 import com.mistraltech.smog.core.ReflectingPropertyMatcher;
 import com.mistraltech.smog.core.util.PropertyDescriptorLocator;
@@ -15,13 +14,9 @@ import org.hamcrest.Matcher;
 
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import static com.mistraltech.smog.proxy.javassist.util.NameUtils.deCapitalise;
-import static com.mistraltech.smog.proxy.javassist.util.NameUtils.removePrefix;
 
 /**
  * Generates a SMOG {@link CompositePropertyMatcher} implementation for a given matcher interface.
@@ -41,8 +36,6 @@ import static com.mistraltech.smog.proxy.javassist.util.NameUtils.removePrefix;
  */
 public class JavassistMatcherGeneratorImpl {
 
-    private static final String MATCHER_METHOD_PREFIX = "has";
-
     /**
      * Generate a matcher class instance for the specified interface.
      *
@@ -55,6 +48,13 @@ public class JavassistMatcherGeneratorImpl {
         return JavaReflectionUtils.createInstance(matcherClass);
     }
 
+    /**
+     * Get the matcher implementation class for the given matcher interface.
+     *
+     * @param matcherInterface the matcher interface
+     * @param <TM> the type of the matcher interface
+     * @return a class that implements the matcher
+     */
     @SuppressWarnings("unchecked")
     private static <TM> Class<TM> getMatcherClass(Class<TM> matcherInterface) {
         final String matcherClassName = generateMatcherClassName(matcherInterface);
@@ -71,12 +71,13 @@ public class JavassistMatcherGeneratorImpl {
     }
 
     private static <TM> Class<TM> generateMatcherClass(Class<TM> matcherInterface, String matcherClassName) {
-        final MatchesAnnotationWrapper matchesAnnotation = new MatchesAnnotationWrapper(matcherInterface);
+        final MatcherInterfaceWrapper<TM> matcherInterfaceWrapper = new MatcherInterfaceWrapper<TM>(matcherInterface);
+        return generateMatcherClass(matcherInterfaceWrapper, matcherClassName);
+    }
 
-        final CtClass matcherCtInterface = JavassistClassUtils.getCtClass(matcherInterface.getName());
+    private static <TM> Class<TM> generateMatcherClass(MatcherInterfaceWrapper<TM> matcherInterface, String matcherClassName) {
         final CtClass matcherCtSuperClass = JavassistClassUtils.getCtClass(CompositePropertyMatcher.class.getName());
-
-        final CtClass matcherCtClass = buildMatcherCtClass(matcherClassName, matchesAnnotation, matcherCtInterface, matcherCtSuperClass);
+        final CtClass matcherCtClass = buildMatcherCtClass(matcherClassName, matcherInterface, matcherCtSuperClass);
 
         final Class<TM> matcherClass = JavassistClassUtils.getClassFrom(matcherCtClass);
         matcherCtClass.detach();
@@ -84,27 +85,27 @@ public class JavassistMatcherGeneratorImpl {
         return matcherClass;
     }
 
-    private static CtClass buildMatcherCtClass(String matcherClassName, MatchesAnnotationWrapper matchesAnnotation,
-                                               CtClass matcherCtInterface, CtClass matcherCtSuperClass) {
+    private static <TM> CtClass buildMatcherCtClass(String matcherClassName, MatcherInterfaceWrapper<TM> matcherInterface,
+                                                    CtClass matcherCtSuperClass) {
+        final CtClass generatedClass = ClassPool.getDefault().makeClass(matcherClassName, matcherCtSuperClass);
+        generatedClass.addInterface(matcherInterface.getCtInterface());
 
-        final CtClass matcherCtClass = ClassPool.getDefault().makeClass(matcherClassName, matcherCtSuperClass);
-        matcherCtClass.addInterface(matcherCtInterface);
+        generateConstructor(matcherInterface, generatedClass);
 
-        generateConstructor(matchesAnnotation.getMatchedClassDescription(), matcherCtClass);
-
-        for (CtMethod ctMethod : getMatcherMethods(matcherCtInterface)) {
-            generateMatcherMethod(matcherCtClass, ctMethod);
+        for (MatcherMethodWrapper matcherMethodDecl : matcherInterface.getMatcherMethods()) {
+            generateMatcherMethod(generatedClass, matcherMethodDecl);
         }
 
-        generateLikeMethod(matcherCtInterface, matchesAnnotation.getMatchedClass(), matcherCtClass);
+        generateLikeMethod(matcherInterface, generatedClass);
 
-        generateMatchesSafelyMethod(matchesAnnotation.getMatchedClass(), matcherCtClass);
+        generateMatchesSafelyMethod(matcherInterface, generatedClass);
 
-        return matcherCtClass;
+        return generatedClass;
     }
 
-    private static void generateMatcherMethod(CtClass matcherCtClass, CtMethod ctMethod) {
-        final String propertyName = convertMatcherMethodNameToPropertyName(ctMethod.getName());
+    private static void generateMatcherMethod(CtClass generatedClass, MatcherMethodWrapper matcherMethodDecl) {
+        final String propertyName = matcherMethodDecl.getMatchedPropertyName();
+
         final String propertyMatcherFieldName = propertyName + "Matcher";
         final String propertyMatcherTypeName = PropertyMatcher.class.getName();
         final String reflectingPropertyMatcherTypeName = ReflectingPropertyMatcher.class.getName();
@@ -112,54 +113,43 @@ public class JavassistMatcherGeneratorImpl {
 
         final String fieldInitializer = String.format("new %s(\"%s\", this)", reflectingPropertyMatcherTypeName, propertyName);
 
-        if (!JavassistClassUtils.hasField(matcherCtClass, propertyMatcherFieldName)) {
-            JavassistClassUtils.addField(matcherCtClass, propertyMatcherCtClass, propertyMatcherFieldName, fieldInitializer);
+        if (!JavassistClassUtils.hasField(generatedClass, propertyMatcherFieldName)) {
+            JavassistClassUtils.addField(generatedClass, propertyMatcherCtClass, propertyMatcherFieldName, fieldInitializer);
         }
 
-        final String methodBody = generateMatcherMethodBody(propertyMatcherFieldName, ctMethod);
+        final String methodBody = generateMatcherMethodBody(propertyMatcherFieldName, matcherMethodDecl);
 
-        JavassistClassUtils.addMethod(matcherCtClass, Modifier.PUBLIC, ctMethod, methodBody);
+        JavassistClassUtils.addMethod(generatedClass, Modifier.PUBLIC, matcherMethodDecl.getCtMethod(), methodBody);
     }
 
-    private static String generateMatcherMethodBody(String propertyMatcherName, CtMethod matcherMethod) {
-        final CtClass parameterType = getSingleParameterType(matcherMethod);
-
-        if (isHamcrestMatcher(parameterType)) {
+    private static String generateMatcherMethodBody(String propertyMatcherName, MatcherMethodWrapper matcherMethod) {
+        if (matcherMethod.takesHamcrestMatcher()) {
             return String.format("{ this.%s.setMatcher($1); return this; }", propertyMatcherName);
         } else {
             return String.format("{ this.%s.setMatcher(org.hamcrest.CoreMatchers.equalTo(($w)$1)); return this; }", propertyMatcherName);
         }
     }
 
-    private static String convertMatcherMethodNameToPropertyName(String name) {
-        if (!hasMatcherMethodName(name)) {
-            throw new IllegalArgumentException(
-                    String.format("Matcher method name '%s' was expected to start with prefix '%s'", name, MATCHER_METHOD_PREFIX));
-        }
-
-        return deCapitalise(removePrefix(name, MATCHER_METHOD_PREFIX));
-    }
-
-    private static void generateConstructor(String matchedClassDescription, CtClass matcherCtClass) {
-        final String constructorBody = String.format("{ super(\"%s\"); }", matchedClassDescription);
+    private static void generateConstructor(MatcherInterfaceWrapper<?> matcherInterface, CtClass matcherCtClass) {
+        final String constructorBody = String.format("{ super(\"%s\"); }", matcherInterface.getMatchedClassDescription());
         JavassistClassUtils.addConstructor(matcherCtClass, constructorBody);
     }
 
-    private static void generateLikeMethod(CtClass matcherCtInterface, Class<?> matchedClass, CtClass matcherCtClass) {
-        List<CtMethod> likeMethods = getLikeMethods(matcherCtInterface, matchedClass);
+    private static void generateLikeMethod(MatcherInterfaceWrapper<?> matcherInterface, CtClass matcherCtClass) {
+        List<CtMethod> likeMethods = matcherInterface.getLikeMethods();
 
         for (CtMethod likeMethod : likeMethods) {
             final StringBuilder bodyBuilder = new StringBuilder();
             bodyBuilder.append("{\n");
 
-            final CtClass likeMethodParameterCtClass = getSingleParameterType(likeMethod);
+            final CtClass likeMethodParameterCtClass = JavassistClassUtils.getSingleParameterType(likeMethod);
             final Class<?> likeMethodParameterClass = JavassistClassUtils.getLoadedClass(likeMethodParameterCtClass);
 
             PropertyDescriptorLocator propertyDescriptorHelper = new PropertyDescriptorLocator(likeMethodParameterClass);
 
             Set<String> matchedProperties = new HashSet<String>();
-            for (CtMethod matcherCtMethod : getMatcherMethods(matcherCtInterface)) {
-                final String propertyName = convertMatcherMethodNameToPropertyName(matcherCtMethod.getName());
+            for (MatcherMethodWrapper matcherMethod : matcherInterface.getMatcherMethods()) {
+                final String propertyName = matcherMethod.getMatchedPropertyName();
 
                 if (!matchedProperties.contains(propertyName)) {
                     final PropertyDescriptor propertyDescriptor = propertyDescriptorHelper.findPropertyDescriptor(propertyName);
@@ -169,13 +159,13 @@ public class JavassistMatcherGeneratorImpl {
                         final String parameter = "$1." + propertyReadMethod.getName() + "()";
 
                         final CtClass propertyCtClass = JavassistClassUtils.getCtClass(propertyReadMethod.getReturnType().getName());
-                        final CtClass matcherMethodParameterCtClass = getSingleParameterType(matcherCtMethod);
+                        final CtClass matcherMethodParameterCtClass = matcherMethod.getParameterType();
 
                         if (matcherMethodParameterCtClass.equals(propertyCtClass)) {
                             // This matcher method takes the matched property type directly
                             // We have a winner...
                             matchedProperties.add(propertyName);
-                            bodyBuilder.append(matcherCtMethod.getName()).append("(").append(parameter).append(");\n");
+                            bodyBuilder.append(matcherMethod.getName()).append("(").append(parameter).append(");\n");
                         }
                     }
                 }
@@ -189,75 +179,13 @@ public class JavassistMatcherGeneratorImpl {
         }
     }
 
-    private static void generateMatchesSafelyMethod(Class<?> matchedClass, CtClass matcherCtClass) {
-        final CtClass matchAccumulatorCtClass = JavassistClassUtils.getCtClass(MatchAccumulator.class.getName());
-        final CtClass matchedCtClass = JavassistClassUtils.getCtClass(matchedClass.getName());
+    private static void generateMatchesSafelyMethod(MatcherInterfaceWrapper<?> matcherInterface, CtClass generatedClass) {
+        final CtClass matchAccumulatorCtClass = SmogTypes.getMatchAccumulatorCtClass();
+        final CtClass matchedCtClass = matcherInterface.getMatchedClass();
+
         final CtClass[] parameters = new CtClass[]{matchedCtClass, matchAccumulatorCtClass};
-        JavassistClassUtils.addMethod(matcherCtClass, Modifier.PROTECTED, "matchesSafely", parameters, "{ super.matchesSafely($1, $2); }", CtClass.voidType);
-    }
 
-    private static List<CtMethod> getLikeMethods(CtClass matcherCtInterface, Class<?> matchedClass) {
-        List<CtMethod> methods = new ArrayList<CtMethod>();
-
-        CtClass matchedCtClass = JavassistClassUtils.getCtClass(matchedClass.getName());
-
-        for (CtMethod method : JavassistClassUtils.getMethods(matcherCtInterface)) {
-            if (hasLikeMethodSignature(method, matchedCtClass, matcherCtInterface)) {
-                methods.add(method);
-            }
-        }
-
-        return methods;
-    }
-
-    private static boolean isHamcrestMatcher(CtClass parameterType) {
-        final CtClass hamcrestMatcherCtClass = JavassistClassUtils.getCtClass(Matcher.class.getName());
-        return JavassistClassUtils.isSubTypeOf(parameterType, hamcrestMatcherCtClass);
-    }
-
-    private static CtClass getSingleParameterType(CtMethod ctMethod) {
-        final CtClass[] parameterTypes = JavassistClassUtils.getParameterTypes(ctMethod);
-
-        if (parameterTypes.length != 1) {
-            throw new RuntimeException("Unexpected method signature for " + ctMethod.getName() +
-                    " - expected 1 parameter but got " + parameterTypes.length);
-        }
-
-        return parameterTypes[0];
-    }
-
-    private static boolean hasLikeMethodSignature(CtMethod ctMethod, CtClass matchedCtClass, CtClass matcherCtClass) {
-        final CtClass returnType = JavassistClassUtils.getReturnType(ctMethod);
-        final CtClass hamcrestMatcherCtClass = JavassistClassUtils.getCtClass(Matcher.class.getName());
-        final CtClass[] parameterTypes = JavassistClassUtils.getParameterTypes(ctMethod);
-        return parameterTypes.length == 1 &&
-                ctMethod.getName().equals("like") &&
-                JavassistClassUtils.isTypeInBounds(returnType, matcherCtClass, hamcrestMatcherCtClass) &&
-                JavassistClassUtils.isSubTypeOf(matchedCtClass, parameterTypes[0]);
-    }
-
-    private static List<CtMethod> getMatcherMethods(CtClass matcherCtInterface) {
-        List<CtMethod> methods = new ArrayList<CtMethod>();
-
-        for (CtMethod method : JavassistClassUtils.getMethods(matcherCtInterface)) {
-            if (hasMatcherMethodSignature(method, matcherCtInterface)) {
-                methods.add(method);
-            }
-        }
-
-        return methods;
-    }
-
-    private static boolean hasMatcherMethodSignature(CtMethod ctMethod, CtClass matcherCtClass) {
-        final CtClass returnType = JavassistClassUtils.getReturnType(ctMethod);
-        final CtClass hamcrestMatcherCtClass = JavassistClassUtils.getCtClass(Matcher.class.getName());
-        final CtClass[] parameterTypes = JavassistClassUtils.getParameterTypes(ctMethod);
-        return parameterTypes.length == 1 &&
-                hasMatcherMethodName(ctMethod.getName()) &&
-                JavassistClassUtils.isTypeInBounds(returnType, matcherCtClass, hamcrestMatcherCtClass);
-    }
-
-    private static boolean hasMatcherMethodName(String name) {
-        return name.startsWith(MATCHER_METHOD_PREFIX);
+        JavassistClassUtils.addMethod(generatedClass, Modifier.PROTECTED, "matchesSafely", parameters,
+                "{ super.matchesSafely($1, $2); }", CtClass.voidType);
     }
 }

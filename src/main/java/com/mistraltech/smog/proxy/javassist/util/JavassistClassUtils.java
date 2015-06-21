@@ -173,4 +173,15 @@ public final class JavassistClassUtils {
 
         Collections.addAll(methods, ctClass.getDeclaredMethods());
     }
+
+    public static CtClass getSingleParameterType(CtMethod ctMethod) {
+        final CtClass[] parameterTypes = JavassistClassUtils.getParameterTypes(ctMethod);
+
+        if (parameterTypes.length != 1) {
+            throw new RuntimeException("Unexpected method signature for " + ctMethod.getName() +
+                    " - expected 1 parameter but got " + parameterTypes.length);
+        }
+
+        return parameterTypes[0];
+    }
 }
