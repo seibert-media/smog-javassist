@@ -23,6 +23,8 @@ import static com.mistraltech.smog.examples.utils.MatcherTestUtils.assertMismatc
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
+import static org.hamcrest.core.IsNot.not;
+import static org.hamcrest.number.OrderingComparison.greaterThanOrEqualTo;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -191,9 +193,20 @@ public class SimpleMatcherExamplesTest {
         Person bob = new Person("Bob", 35, null);
 
         Matcher<Person> youngPerson = aPersonThat().hasAge(35);
-        Matcher<Person> oldPerson = aPersonThat().hasAge(36);
+        Matcher<Person> oldPerson = aPersonThat().hasAge(greaterThanOrEqualTo(36));
 
         assertTrue(youngPerson.matches(bob));
         assertFalse(oldPerson.matches(bob));
+    }
+
+    @Test
+    public void testAnnotatedMatcherMethods() {
+        Person bob = new Person("Bob", 35, null);
+
+        Matcher<Person> aYoungPerson = aPersonThat().havingYearsOld(35);
+        Matcher<Person> anOldPerson = aPersonThat().havingYearsOld(greaterThanOrEqualTo(36));
+
+        assertThat(bob, is(aYoungPerson));
+        assertThat(bob, is(not(anOldPerson)));
     }
 }

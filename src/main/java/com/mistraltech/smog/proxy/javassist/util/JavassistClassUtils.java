@@ -184,4 +184,12 @@ public final class JavassistClassUtils {
 
         return parameterTypes[0];
     }
+
+    public static <T> T getAnnotation(CtMethod method, Class<T> annotationClass) {
+        try {
+            return (T) method.getAnnotation(annotationClass);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

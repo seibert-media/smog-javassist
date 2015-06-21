@@ -19,8 +19,11 @@ public class MatcherMethodWrapper {
     }
 
     public String getMatchedPropertyName() {
+        final MatchesProperty matchesPropertyAnnotation = JavassistClassUtils.getAnnotation(matcherMethod, MatchesProperty.class);
 
-        // TODO this should now also consider MatchesProperty annotation
+        if (matchesPropertyAnnotation != null) {
+            return matchesPropertyAnnotation.value();
+        }
 
         if (!hasMatcherMethodPropertyName(matcherMethod)) {
             throw new IllegalArgumentException(
