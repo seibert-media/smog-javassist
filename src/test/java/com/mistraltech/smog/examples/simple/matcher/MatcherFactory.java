@@ -1,6 +1,6 @@
 package com.mistraltech.smog.examples.simple.matcher;
 
-import static com.mistraltech.smog.proxy.javassist.JavassistMatcherGeneratorImpl.matcherOf;
+import static com.mistraltech.smog.proxy.javassist.JavassistMatcherGenerator.matcherOf;
 
 public final class MatcherFactory {
     public static PersonMatcher aPersonThat() {

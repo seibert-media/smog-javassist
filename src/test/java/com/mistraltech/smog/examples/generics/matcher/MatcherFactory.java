@@ -2,7 +2,7 @@ package com.mistraltech.smog.examples.generics.matcher;
 
 import com.mistraltech.smog.examples.model.generics.Box;
 
-import static com.mistraltech.smog.proxy.javassist.JavassistMatcherGeneratorImpl.matcherOf;
+import static com.mistraltech.smog.proxy.javassist.JavassistMatcherGenerator.matcherOf;
 
 public class MatcherFactory {
     @SuppressWarnings("unchecked")

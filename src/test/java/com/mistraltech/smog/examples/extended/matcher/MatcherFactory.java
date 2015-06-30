@@ -3,7 +3,7 @@ package com.mistraltech.smog.examples.extended.matcher;
 import com.mistraltech.smog.examples.model.Addressee;
 import com.mistraltech.smog.examples.model.Person;
 
-import static com.mistraltech.smog.proxy.javassist.JavassistMatcherGeneratorImpl.matcherOf;
+import static com.mistraltech.smog.proxy.javassist.JavassistMatcherGenerator.matcherOf;
 
 public class MatcherFactory {
     @SuppressWarnings("unchecked")

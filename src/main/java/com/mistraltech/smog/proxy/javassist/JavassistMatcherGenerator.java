@@ -34,7 +34,7 @@ import java.util.Set;
  * The interface can also optionally declare a "like" method that takes an instance
  * of the matched class or a super-type and will use it to pre-populate the property matchers with expected values.
  */
-public class JavassistMatcherGeneratorImpl {
+public class JavassistMatcherGenerator {
 
     /**
      * Generate a matcher class instance for the specified interface.
