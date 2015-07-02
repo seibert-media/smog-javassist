@@ -13,7 +13,7 @@
 
     <groupId>com.mistraltech.smog</groupId>
     <artifactId>smog-javassist</artifactId>
-    <version>1.1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>SMOG Javassist Proxy Generator</name>
@@ -53,7 +53,7 @@
         <dependency>
             <groupId>com.mistraltech.smog</groupId>
             <artifactId>smog-core</artifactId>
-            <version>1.1.0-SNAPSHOT</version>
+            <version>1.1.0</version>
         </dependency>
 
         <dependency>
