@@ -20,17 +20,17 @@ import java.util.Set;
 
 /**
  * Generates a SMOG {@link CompositePropertyMatcher} implementation for a given matcher interface.
- * <p/>
+ * <p>
  * The supplied matcher interface is required to have a {@link Matcher} annotation.
- * <p/>
+ * <p>
  * The interface should declare methods beginning "has" for each relevant
  * property on the matched class e.g. hasName(..). These methods should take a single parameter
  * of the type of the property. There is no requirement to supply a "has" method for all properties.
- * <p/>
+ * <p>
  * Additionally (or alternatively) a "has" method can be declared for each relevant property that takes
- * a single parameter of type Matcher<? super propertyType>, where propertyType is the type of the matched
+ * a single parameter of type Matcher&lt;? super propertyType&gt;, where propertyType is the type of the matched
  * property.
- * <p/>
+ * <p>
  * The interface can also optionally declare a "like" method that takes an instance
  * of the matched class or a super-type and will use it to pre-populate the property matchers with expected values.
  */
