@@ -1,11 +1,12 @@
 # smog-javassist
 Javassist-based runtime code generator extension for Smog.
 ## Summary
-Matcher classes based on the SMOG matcher library are typically boiler-plate code.
+Matcher classes based on the [SMOG Matcher library](https://github.com/mistraltechnologies/smog) are
+typically boiler-plate code.
 
 To avoid the burden of writing
-these, static code generators such as the Smogen IntelliJ plugin can be used. However, this still results in a lot of
-code that is baggage in a project.
+these, static code generators such as the [Smogen IntelliJ plugin](https://github.com/mistraltechnologies/smoged) can
+be used. However, this still results in a lot of code that is baggage in a project.
 
 Smog-Javassist is an extension to SMOG that removes the need for boiler-plate code without
 resorting to a reflection-oriented solution, so that the benefits of statically typed code are retained: type-safety
@@ -64,7 +65,7 @@ be rewritten as:
 
     assertThat(bob, is(aPersonThat()).hasName("Bob"));
 
-Notice that the PersonMatcher interface shown previously provides overloaded functions for each property: one that take
+Notice that the PersonMatcher interface shown previously provides overloaded functions for each property: one that takes
 a value that is the same type as the matched property, and one that takes a Matcher. The code generator will
 generate appropriate implementations for both signatures. This allows other Hamcrest matchers to be used as
 parameters (including other SMOG matchers):
