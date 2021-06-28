@@ -53,7 +53,7 @@ public final class JavassistClassUtils {
     @SuppressWarnings("unchecked")
     public static <TM> Class<TM> getClassFrom(CtClass matcherCtClass) {
         try {
-            return matcherCtClass.toClass();
+            return (Class<TM>) matcherCtClass.toClass();
         } catch (CannotCompileException e) {
             throw new RuntimeException("Failed to compile class", e);
         }
