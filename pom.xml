@@ -13,7 +13,7 @@
 
     <groupId>com.mistraltech.smog</groupId>
     <artifactId>smog-javassist</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.1-SEIBERTMEDIA</version>
     <packaging>jar</packaging>
 
     <name>SMOG Javassist Proxy Generator</name>
